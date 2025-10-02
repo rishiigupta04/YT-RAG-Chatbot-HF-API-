@@ -2,20 +2,20 @@
 YouTube RAG Chatbot - Streamlit App
 
 Proxy Support for YouTube Transcript API:
-- For cloud deployment, set the YT_PROXY environment variable (or Streamlit secret) to a working HTTPS proxy (e.g., http://14.251.13.0:8080).
+- For cloud deployment, set the HTTPS_PROXY environment variable (or Streamlit secret) to a working HTTPS proxy (e.g., http://14.251.13.0:8080).
 - This is required because YouTube blocks transcript requests from most cloud IPs.
-- If YT_PROXY is not set, transcript fetching will likely fail on Streamlit Cloud.
+- If HTTPS_PROXY is not set, transcript fetching will likely fail on Streamlit Cloud.
 """
 import streamlit as st
-from rag_using_hf_api import run_chain_pipeline
+from rag_using_hf_api import run_chain_pipeline, fetch_transcript
 import base64
 import os
 
-# Show a warning if YT_PROXY is not set
-if not os.getenv("YT_PROXY"):
+# Show a warning if HTTPS_PROXY is not set
+if not os.getenv("HTTPS_PROXY"):
     st.warning(
-        "YT_PROXY environment variable is not set. YouTube transcript requests may fail on cloud hosts. "
-        "Set YT_PROXY as a Streamlit secret to use a proxy (e.g., http://14.251.13.0:8080)."
+        "HTTPS_PROXY environment variable is not set. YouTube transcript requests may fail on cloud hosts. "
+        "Set HTTPS_PROXY as a Streamlit secret to use a proxy (e.g., http://14.251.13.0:8080)."
     )
 
 # Inject custom CSS for modern SaaS look
@@ -214,11 +214,28 @@ with st.container():
                     embedding_model=embedding_model,
                     status_callback=status_callback
                 )
-                st.markdown(f"<div class='answer-box'><b>Answer:</b><br>{answer}</div>", unsafe_allow_html=True)
+                # If the answer looks like an error, show as error, else as answer
+                if answer and ("error" in answer.lower() or "failed" in answer.lower() or "no captions" in answer.lower()):
+                    st.error(f"Transcript Error: {answer}")
+                else:
+                    st.markdown(f"<div class='answer-box'><b>Answer:</b><br>{answer}</div>", unsafe_allow_html=True)
                 with st.expander("Show Details/Logs"):
                     st.code("\n".join(logs))
             except Exception as e:
                 st.error(f"Error: {e}")
+
+    # Proxy test utility
+    if st.button("Test Proxy"):
+        with st.spinner("Testing proxy with a known YouTube video..."):
+            # Use a well-known video with captions
+            test_video_id = "dQw4w9WgXcQ"
+            result = fetch_transcript(test_video_id)
+            if isinstance(result, list) and result and isinstance(result[0], dict) and "error" in result[0]:
+                st.error(f"Proxy Test Failed: {result[0]['error']}")
+            elif result:
+                st.success("Proxy Test Succeeded: Transcript fetched!")
+            else:
+                st.warning("Proxy Test: No transcript found, but no error returned.")
 
 st.markdown("""
 <div class='footer'>

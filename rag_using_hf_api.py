@@ -49,35 +49,32 @@ def extract_video_id(url_or_id: str) -> str:
 
 transcript_cache = {}
 
-# Read proxy from environment variable (YT_PROXY) or use a default/fallback if needed
-# For cloud deployment, set YT_PROXY to e.g. http://14.251.13.0:8080
-yt_proxy = os.getenv("YT_PROXY")
-
-
 def fetch_transcript(video_id: str, language: str = "en") -> list:
     """
     Fetch transcript from a YouTube video using its ID.
     Returns a list of dicts: [{"text": ..., "start": ...}, ...]
-    Uses a proxy if YT_PROXY environment variable is set.
+    Uses a proxy if HTTPS_PROXY environment variable is set.
+    If transcript is not found, returns a dict with an 'error' key for diagnostics.
     """
     cache_key = f"{video_id}:{language}"
     if cache_key in transcript_cache:
         return transcript_cache[cache_key]
     try:
         ytt_api = YouTubeTranscriptApi()
-        proxies = {"https": yt_proxy} if yt_proxy else None
-        transcript_data = ytt_api.fetch(video_id, languages=[language], proxies=proxies)
+        transcript_data = ytt_api.fetch(video_id, languages=[language])
         transcript = [{"text": snippet.text, "start": snippet.start} for snippet in transcript_data]
         transcript_cache[cache_key] = transcript
         return transcript
     except TranscriptsDisabled:
-        print("No captions available for this video.")
+        msg = "No captions available for this video."
+        print(msg)
         transcript_cache[cache_key] = []
-        return []
+        return [{"error": msg}]
     except Exception as e:
-        print(f"Transcript fetch failed: {e}")
+        msg = f"Transcript fetch failed: {e}"
+        print(msg)
         transcript_cache[cache_key] = []
-        return []
+        return [{"error": msg}]
 
 
 def detect_language(text: str) -> str:
@@ -296,6 +293,11 @@ def run_chain_pipeline(url_or_id, question, user_id='default_user', chunk_size=6
             status_callback(msg)
     status("Getting transcript...")
     transcript = fetch_transcript(extract_video_id(url_or_id))
+    # Check for error in transcript fetching
+    if isinstance(transcript, list) and transcript and isinstance(transcript[0], dict) and "error" in transcript[0]:
+        error_msg = transcript[0]["error"]
+        status(f"Transcript error: {error_msg}")
+        return error_msg, error_msg
     if not transcript:
         status("Transcript not found.")
         return "Transcript not found.", "Transcript not found."
