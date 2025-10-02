@@ -5,3 +5,4 @@ numpy
 langchain
 langchain-community
 faiss-cpu
+langchain-huggingface
