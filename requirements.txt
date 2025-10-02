@@ -6,3 +6,6 @@ langchain
 langchain-community
 faiss-cpu
 langchain-huggingface
+deep-translator
+langdetect
+python-dotenv
