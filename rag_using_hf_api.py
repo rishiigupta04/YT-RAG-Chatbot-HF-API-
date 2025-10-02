@@ -1,5 +1,5 @@
 from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled
-from youtube_transcript_api.proxies import GenericProxyConfig
+from youtube_transcript_api.proxies import WebshareProxyConfig
 from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import PromptTemplate
 from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint, HuggingFaceEmbeddings
@@ -54,25 +54,20 @@ def fetch_transcript(video_id: str, language: str = "en") -> list:
     """
     Fetch transcript from a YouTube video using its ID.
     Returns a list of dicts: [{"text": ..., "start": ...}, ...]
-    Uses a proxy if HTTPS_PROXY or HTTP_PROXY environment variable is set, using GenericProxyConfig.
+    Uses WebshareProxyConfig for proxying all requests through Webshare.
     If transcript is not found, returns a dict with an 'error' key for diagnostics.
     """
     cache_key = f"{video_id}:{language}"
     if cache_key in transcript_cache:
         return transcript_cache[cache_key]
     try:
-        # Proxy config
-        http_proxy = os.getenv("HTTP_PROXY")
-        https_proxy = os.getenv("HTTPS_PROXY")
-        proxy_config = None
-        if http_proxy or https_proxy:
-            proxy_config = GenericProxyConfig(
-                http_url=http_proxy,
-                https_url=https_proxy
+        # Webshare proxy config
+        ytt_api = YouTubeTranscriptApi(
+            proxy_config=WebshareProxyConfig(
+                proxy_username="jrxwtyvk",
+                proxy_password="0uhsmpvytyzm",
             )
-            ytt_api = YouTubeTranscriptApi(proxy_config=proxy_config)
-        else:
-            ytt_api = YouTubeTranscriptApi()
+        )
         transcript_data = ytt_api.fetch(video_id, languages=[language])
         transcript = [{"text": snippet.text, "start": snippet.start} for snippet in transcript_data]
         transcript_cache[cache_key] = transcript
