@@ -2,3 +2,6 @@ streamlit
 requests
 youtube-transcript-api
 numpy
+langchain
+langchain-community
+faiss-cpu
