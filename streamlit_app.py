@@ -1,6 +1,22 @@
+"""
+YouTube RAG Chatbot - Streamlit App
+
+Proxy Support for YouTube Transcript API:
+- For cloud deployment, set the YT_PROXY environment variable (or Streamlit secret) to a working HTTPS proxy (e.g., http://14.251.13.0:8080).
+- This is required because YouTube blocks transcript requests from most cloud IPs.
+- If YT_PROXY is not set, transcript fetching will likely fail on Streamlit Cloud.
+"""
 import streamlit as st
 from rag_using_hf_api import run_chain_pipeline
 import base64
+import os
+
+# Show a warning if YT_PROXY is not set
+if not os.getenv("YT_PROXY"):
+    st.warning(
+        "YT_PROXY environment variable is not set. YouTube transcript requests may fail on cloud hosts. "
+        "Set YT_PROXY as a Streamlit secret to use a proxy (e.g., http://14.251.13.0:8080)."
+    )
 
 # Inject custom CSS for modern SaaS look
 st.markdown("""

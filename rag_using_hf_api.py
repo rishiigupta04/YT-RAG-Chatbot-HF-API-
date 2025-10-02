@@ -49,23 +49,33 @@ def extract_video_id(url_or_id: str) -> str:
 
 transcript_cache = {}
 
+# Read proxy from environment variable (YT_PROXY) or use a default/fallback if needed
+# For cloud deployment, set YT_PROXY to e.g. http://14.251.13.0:8080
+yt_proxy = os.getenv("YT_PROXY")
+
 
 def fetch_transcript(video_id: str, language: str = "en") -> list:
     """
     Fetch transcript from a YouTube video using its ID.
     Returns a list of dicts: [{"text": ..., "start": ...}, ...]
+    Uses a proxy if YT_PROXY environment variable is set.
     """
     cache_key = f"{video_id}:{language}"
     if cache_key in transcript_cache:
         return transcript_cache[cache_key]
     try:
         ytt_api = YouTubeTranscriptApi()
-        transcript_data = ytt_api.fetch(video_id, languages=[language])
+        proxies = {"https": yt_proxy} if yt_proxy else None
+        transcript_data = ytt_api.fetch(video_id, languages=[language], proxies=proxies)
         transcript = [{"text": snippet.text, "start": snippet.start} for snippet in transcript_data]
         transcript_cache[cache_key] = transcript
         return transcript
     except TranscriptsDisabled:
         print("No captions available for this video.")
+        transcript_cache[cache_key] = []
+        return []
+    except Exception as e:
+        print(f"Transcript fetch failed: {e}")
         transcript_cache[cache_key] = []
         return []
 
